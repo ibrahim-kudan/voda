@@ -28,7 +28,7 @@ class VideoDDSpublisher
 {
 public:
 
-	VideoDDSpublisher(dds::pub::DataWriter<S2E::Video>& dataWriter, bool useTestSrc, bool useOmx, bool useFixedCaps);
+	VideoDDSpublisher(dds::pub::DataWriter<S2E::Video>& dataWriter, bool useTestSrc, bool useOmx, bool useFixedCaps, bool useDisplay=false);
 	~VideoDDSpublisher();
 	GstAppSink* appsink();
 	GstPipeline* pipeline();
