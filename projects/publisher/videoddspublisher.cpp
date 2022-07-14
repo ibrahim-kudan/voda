@@ -73,7 +73,7 @@ VideoDDSpublisher::~VideoDDSpublisher()
 	g_object_set(ddsAppSink, "emit-signals", false, nullptr);
 }
 
-VideoDDSpublisher::VideoDDSpublisher(dds::pub::DataWriter<S2E::Video>& dataWriter, bool useTestSrc, bool useOmx, bool useFixedCaps)
+VideoDDSpublisher::VideoDDSpublisher(dds::pub::DataWriter<S2E::Video>& dataWriter, bool useTestSrc, bool useOmx, bool useFixedCaps, bool useDisplay)
 	: m_dataWriter(dataWriter)
 {
 	//////////////
@@ -233,26 +233,30 @@ VideoDDSpublisher::VideoDDSpublisher(dds::pub::DataWriter<S2E::Video>& dataWrite
 	// Display
 
 	auto displayBin = GST_BIN_CAST(gst_bin_new("displayBin"));
-	auto displayConverter = gst_element_factory_make("videoconvert", nullptr);
-	auto appSink = gst_element_factory_make("glimagesink", "displayAppSink");
-	gst_bin_add(displayBin, displayConverter);
-	gst_bin_add(displayBin, appSink);
-	auto displaySinkCaps = gst_caps_new_simple("video/x-raw",
-		"format", G_TYPE_STRING, "RGBA",
-		nullptr
-	);
-	g_object_set(appSink,
-		// "caps", displaySinkCaps,
-		// "max-buffers", 1,
-		// "drop", true,
-		"sync", false,
-		nullptr
-	);
-	gst_element_link(displayConverter, appSink);
+	if(useDisplay){
+				
+		auto displayConverter = gst_element_factory_make("videoconvert", nullptr);
+		auto appSink = gst_element_factory_make("glimagesink", "displayAppSink");
+		gst_bin_add(displayBin, displayConverter);
+		gst_bin_add(displayBin, appSink);
+		auto displaySinkCaps = gst_caps_new_simple("video/x-raw",
+			"format", G_TYPE_STRING, "RGBA",
+			nullptr
+		);
+		g_object_set(appSink,
+			// "caps", displaySinkCaps,
+			// "max-buffers", 1,
+			// "drop", true,
+			"sync", false,
+			nullptr
+		);
+		gst_element_link(displayConverter, appSink);
 
-	const auto padFirstDisplay = gst_element_get_static_pad(displayConverter, "sink");
-	gst_element_add_pad(GST_ELEMENT_CAST(displayBin), gst_ghost_pad_new("sink", padFirstDisplay));
-	gst_object_unref(GST_OBJECT(padFirstDisplay));
+		const auto padFirstDisplay = gst_element_get_static_pad(displayConverter, "sink");
+		gst_element_add_pad(GST_ELEMENT_CAST(displayBin), gst_ghost_pad_new("sink", padFirstDisplay));
+		gst_object_unref(GST_OBJECT(padFirstDisplay));
+		}
+	
 
 	///////////
 	// Create pipeline and bring the bins together
@@ -272,7 +276,10 @@ VideoDDSpublisher::VideoDDSpublisher(dds::pub::DataWriter<S2E::Video>& dataWrite
 
 	auto boolret = gst_element_link(GST_ELEMENT_CAST(sourceBin), tee);
 	boolret &= gst_element_link(queue0, GST_ELEMENT_CAST(encoderBin));
+		
+	if(useDisplay)
 	boolret &= gst_element_link(queue1, GST_ELEMENT_CAST(displayBin));
+		
 	boolret &= gst_element_link_pads(tee, "src_0", queue0, "sink");
 	boolret &= gst_element_link_pads(tee, "src_1", queue1, "sink");
 
